@@ -11,7 +11,7 @@ from numpy.random import normal
 import pandas as pd
 import pylab as pl
 import simanneal
-from shapely.geometry import LinearRing, Polygon, Point
+from shapely.geometry import LinearRing, Polygon, Point, MultiLineString
 
 # Generate data set
 np.random.seed(1337)
@@ -19,9 +19,22 @@ points = np.random.random((182, 2)) * 100
 # points = [Point(p) for p in points]
 
 # Create target Polygon
-poly = Polygon([(5, 20), (5, 80), (95, 80), (95, 20)])
-poly_ext = LinearRing(poly.exterior.coords)
-px, py = poly_ext.xy
+# poly = Polygon([(5, 20), (5, 80), (95, 80), (95, 20)])  # Rectangle
+coords = [((15, 15), (15, 15)),
+          ((15, 50), (15, 50)),
+          ((15, 85), (15, 85)),
+          ((50, 15), (50, 15)),
+          ((50, 50), (50, 50)),
+          ((50, 85), (50, 85)),
+          ((85, 15), (85, 15)),
+          ((85, 50), (85, 50)),
+          ((85, 85), (85, 85)),
+         ]
+poly_ext = MultiLineString(coords)
+poly = poly_ext
+# poly_ext = LinearRing(poly.exterior.coords)
+# poly_ext.xy = []
+# px, py = poly_ext.xy
 
 # Turn interactive mode on for plotting
 pl.ion()
@@ -40,14 +53,14 @@ def plot_points(points, poly_ext, orig_points=False):
   pl.pause(0.0001)
   pl.show()
 
-def plot_pointsNP(points, poly_ext, orig_points=False):
-  if orig_points:
-    pl.scatter(orig_points[:, 0], orig_points[:, 1], color="blue", s=50, alpha=0.7)
+def plot_pointsNP(points, poly_ext, orig_points=None):
+  if orig_points is not None:
+    pl.scatter(orig_points[:, 0], orig_points[:, 1], color="blue", s=50, alpha=0.5)
   x = points[:, 0]
   y = points[:, 1]
-  pl.scatter(x, y)
-  px, py = poly_ext.xy
-  pl.plot(px, py)
+  # px, py = poly_ext.xy
+  # pl.plot(px, py, alpha=0.5)
+  pl.scatter(x, y, color="red")
   pl.xlim(0, 100)
   pl.ylim(0, 100)
   pl.pause(0.0001)
@@ -62,13 +75,13 @@ def get_x(points):
 def get_y(points):
   return points[:, 1]  #[p.y for p in points]
 def get_point_mean_x(points):
-  return sum([p.x for p in points]) / len(points)
+  return sum(get_x(points)) / len(points)
 def get_point_mean_y(points):
-  return sum([p.y for p in points]) / len(points)
+  return sum(get_y(points)) / len(points)
 def get_point_sd_x(points):
-  return np.array([p.x for p in points]).std()
+  return np.array(get_x(points)).std()
 def get_point_sd_y(points):
-  return np.array([p.y for p in points]).std()
+  return np.array(get_y(points)).std()
 def get_stats(points):
   return [
       get_point_mean_x(points),
@@ -81,8 +94,8 @@ def print_stats(points):
 
 def write_points(points, fname):
   df = pd.DataFrame()
-  df["x"] = [p.x for p in points]
-  df["y"] = [p.y for p in points]
+  df["x"] = get_x(points)
+  df["y"] = get_y(points)
   df.to_csv(fname, index=False)
 
 
@@ -108,7 +121,7 @@ def Fit1(point):
   return -poly_ext.distance(Point(point[0], point[1]))
 
 
-def PerturbNP(ds, temp):
+def PerturbNP(ds, temp, scale=0.1):
   # loop: ?
   for i in range(1000):
     # Move a random point
@@ -118,8 +131,9 @@ def PerturbNP(ds, temp):
     new_point = old_point + normal(scale=scale, size= 2)
 
     if temp > np.random.random() or Fit1(new_point) > Fit1(old_point):
-      ds[rand_idx, :] = new_point
-      return ds
+      out = ds.copy()
+      out[rand_idx, :] = new_point
+      return out
   print("failed to pass")
   return ds
 
@@ -178,9 +192,9 @@ def MoveRandomPoints(ds, scale=0.019):
   return new_points
 
 
-initial_ds = points
-NUM_LOOPS = 100000
-current_ds = initial_ds
+NUM_LOOPS = 200000
+initial_ds = points.copy()
+current_ds = points
 temperatures = np.logspace(np.log10(0.4), np.log10(0.1), num=NUM_LOOPS)
 pl.figure()
 pl.show()
@@ -193,12 +207,17 @@ for i, temp in enumerate(temperatures):
 
   if i % 100 == 0:
     # print(i, "%.4f" % Fit(current_ds), end="\t")
-    print(i, "%.4f" % FitOverall(current_ds), end="\t")
+    print(i, "%.4f" % FitOverall(current_ds), sep="\t", end="\t")
     print_stats(current_ds)
+    # print_stats(initial_ds)
     pl.clf()
     plot_pointsNP(current_ds, poly_ext, orig_points=initial_ds)
     # plot_points(current_ds, poly_ext, orig_points=initial_ds)
 
-write_points(current_ds, "box_points.csv")
+write_points(current_ds, "grid_points.csv")
+
+pl.ioff()
+plot_pointsNP(current_ds, poly_ext, orig_points=initial_ds)
+
 
 
