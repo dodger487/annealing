@@ -39,8 +39,6 @@ from shapely.geometry import Point, MultiLineString
 from find_dataset import FindDataset
 
 
-# np.random.seed(1337)
-# points = np.random.random((182, 2)) * 100
 points = pd.read_csv(args.input_fname)
 points = np.array([[x, y] for x, y in zip(points.x, points.y)])
 

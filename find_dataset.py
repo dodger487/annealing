@@ -66,28 +66,39 @@ def write_points(points, fname):
   df.to_csv(fname, index=False)
 
 
-def read_target_points(fname):
-  """Converts CSV filename of points coordinates to list our code can use.
+def read_target(fname):
+  """Converts filename of CSV containing line coords to list our code can use.
+  """
+  df = pd.read_csv(fname)
+  if "x" in df.columns and "y" in df.columns:
+    return read_target_points(df)
+  elif ("x1" in df.columns and "y1" in df.columns 
+        and "x2" in df.columns and "y2" in df.columns):
+    return read_target_lines(df)
+  else:
+    raise Exception("Target dataframe must have either columns x and y (for "
+                    "points) or x1, y1, x2, and y2 (for line segments)")
+
+def read_target_points(df):
+  """Converts dataframe of points coordinates to list our code can use.
 
   Takes the filename of a CSV with columns "x" and "y". Returns a list of tuples
   where each tuple is a start point and an end point. Since this is going for
   points and not line-segments, that tuple will just be repeats.
   """
-  df = pd.read_csv(fname)
   point_list = df[["x", "y"]].to_records().tolist()
   point_list = [(x, y) for idx, x, y in point_list]
   point_list = [(point, point) for point in point_list]
   return point_list
 
 
-def read_target_lines(fname):
-  """Converts filename of CSV containing line coords to list our code can use.
+def read_target_lines(df):
+  """Converts DataFrame containing line coords to list our code can use.
 
   Takes the filename of a CSV with columns "x1", "y1", "x2", and "y2". 
   Returns a list of tuples where each tuple is a start point and an end point 
   for a line segment which can be input into Shapely.
   """
-  df = pd.read_csv(fname)
   point_list = df[["x1", "y1", "x2", "y2"]].to_records().tolist()
   point_list = [((x1, y1), (x2, y2)) for idx, x1, y1, x2, y2 in point_list]
   return point_list
@@ -119,9 +130,9 @@ def prep_gifwriter(gif_fname):
     gif_writer = None
 
 
-def OutputInfo(i, current_ds, target, initial_ds, num_loops, fig_fname, 
+def OutputInfo(step, current_ds, target, initial_ds, num_loops, fig_fname, 
                gif_writer, show_plots=True):
-  print(i, end="\t")
+  print(step, end="\t")
   print("%.4f" % FitnessOverall(current_ds, target), sep="\t", end="\t")
   print_stats(current_ds)
   pl.clf()
@@ -132,7 +143,7 @@ def OutputInfo(i, current_ds, target, initial_ds, num_loops, fig_fname,
 
   if fig_fname is not None:
     this_name = "{fig_fname}_{step:0>{num_place}}.png".format(
-        fig_fname=fig_fname, step=i, num_place=int(math.log10(num_loops)))
+        fig_fname=fig_fname, step=step, num_place=int(math.log10(num_loops)))
     pl.savefig(this_name)
 
   if gif_writer is not None:
@@ -223,33 +234,19 @@ def FindDataset(initial_ds, target, num_loops=2e5, step_size=100,
 
 
 def main():
+  """As an example, creates a box dataset with same stats as random points"""
+
   # Generate random data set
   np.random.seed(1337)
   points = np.random.random((182, 2)) * 100
 
-  # Create target Polygon
-  # coords = [
-  #     ((15, 15), (15, 15)),
-  #     ((15, 50), (15, 50)),
-  #     ((15, 85), (15, 85)),
-  #     ((50, 15), (50, 15)),
-  #     ((50, 50), (50, 50)),
-  #     ((50, 85), (50, 85)),
-  #     ((85, 15), (85, 15)),
-  #     ((85, 50), (85, 50)),
-  #     ((85, 85), (85, 85)),
-  # ]
-  # coords = read_target_points("targets/grid.csv")
-  coords = read_target_points("targets/Datasaurus_data.csv")
-  # coords = read_target_lines("targets/box.csv")
+  coords = read_target("targets/box.csv")
   target = MultiLineString(coords)
 
   # Turn interactive mode on for plotting
   pl.ion()
 
-  out_points = FindDataset(points, target, 2e5, step_size=1000, )
-      # gif_fname="fig/gif/test.gif")
-      # fig_fname="fig/grid/grid")
+  out_points = FindDataset(points, target, step_size=100)
   print("done.")
   # write_points(current_ds, "grid_points.csv")
 
