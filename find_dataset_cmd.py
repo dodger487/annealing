@@ -10,7 +10,26 @@ their work at https://www.autodeskresearch.com/publications/samestats
 """
 
 import argparse
+
+import numpy as np
 import pandas as pd
+import pylab as pl
+from shapely.geometry import Point, MultiLineString
+
+import find_dataset
+
+
+default_coords = [
+    ((15, 15), (15, 15)),
+    ((15, 50), (15, 50)),
+    ((15, 85), (15, 85)),
+    ((50, 15), (50, 15)),
+    ((50, 50), (50, 50)),
+    ((50, 85), (50, 85)),
+    ((85, 15), (85, 15)),
+    ((85, 50), (85, 50)),
+    ((85, 85), (85, 85)),
+]
 
 desc = ("Command line access to code for finding different graphs with same "
         "stats."
@@ -28,38 +47,28 @@ parser.add_argument(
 parser.add_argument(
     "--gif_fname", default=None, type=str,
     help="Filename in which to save a GIF animation image of the annealing.")
-
+parser.add_argument(
+    "--target_fname", default=None, type=str,
+    help="Filename of target points. File should be CSV with columns x and y, "
+         "or (for multiple lines) columns x1, y1, x2, y2."
+    )
 args = parser.parse_args()
-
-
-import numpy as np
-import pylab as pl
-from shapely.geometry import Point, MultiLineString
-
-from find_dataset import FindDataset
 
 
 points = pd.read_csv(args.input_fname)
 points = np.array([[x, y] for x, y in zip(points.x, points.y)])
 
+
 # Create target Polygon
-coords = [
-    ((15, 15), (15, 15)),
-    ((15, 50), (15, 50)),
-    ((15, 85), (15, 85)),
-    ((50, 15), (50, 15)),
-    ((50, 50), (50, 50)),
-    ((50, 85), (50, 85)),
-    ((85, 15), (85, 15)),
-    ((85, 50), (85, 50)),
-    ((85, 85), (85, 85)),
-]
-target = MultiLineString(coords)
+if args.target_fname is None:
+    target = MultiLineString(default_coords)
+else:
+    target = find_dataset.read_target(args.target_fname)
 
 
 pl.ion()
 
-out_points = FindDataset(
+out_points = find_dataset.FindDataset(
     points, 
     target, 
     num_loops=args.num_loops, 

@@ -89,7 +89,7 @@ def read_target_points(df):
   point_list = df[["x", "y"]].to_records().tolist()
   point_list = [(x, y) for idx, x, y in point_list]
   point_list = [(point, point) for point in point_list]
-  return point_list
+  return MultiLineString(point_list)
 
 
 def read_target_lines(df):
@@ -101,7 +101,7 @@ def read_target_lines(df):
   """
   point_list = df[["x1", "y1", "x2", "y2"]].to_records().tolist()
   point_list = [((x1, y1), (x2, y2)) for idx, x1, y1, x2, y2 in point_list]
-  return point_list
+  return MultiLineString(point_list)
 
 
 def plot_points(points, target, orig_points=None):
@@ -182,7 +182,7 @@ def Perturb(ds, target, temp, scale=0.1):
     # Move a random point
     rand_idx = np.random.randint(len(ds))
     old_point = ds[rand_idx, :]
-    new_point = old_point + normal(scale=scale, size= 2)
+    new_point = old_point + normal(scale=scale, size=2)
 
     if (temp > np.random.random() 
           or Fitness(new_point, target) > Fitness(old_point, target)):
